@@ -64,7 +64,10 @@ yarn-debug.log*
 yarn-error.log*
 
 # Generated gRPC files
-**/generated/
+src/main/generated-sources/protobuf/java/*
+!src/main/generated-sources/protobuf/java/.gitkeep
+src/main/generated-sources/protobuf/grpc-java/*
+!src/main/generated-sources/protobuf/grpc-java/.gitkeep
 
 # Test reports
 test-output/

@@ -1,5 +1,7 @@
 package ai.shreds.domain.entities;
 
+import ai.shreds.domain.events.DomainEvent;
+import ai.shreds.domain.events.PaymentStatusChangedEvent;
 import ai.shreds.domain.exceptions.DomainPaymentException;
 import ai.shreds.domain.value_objects.DomainValueMoney;
 import ai.shreds.domain.value_objects.DomainValuePaymentStatus;

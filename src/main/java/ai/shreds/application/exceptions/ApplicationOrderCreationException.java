@@ -58,17 +58,27 @@ public class ApplicationOrderCreationException extends RuntimeException {
     public String toString() {
         StringBuilder sb = new StringBuilder()
             .append("ApplicationOrderCreationException{")
-            .append("message='").append(message).append('\\'')
-            .append(", errorCode='").append(errorCode).append('\\'')
-            .append(", timestamp=").append(timestamp);
+            .append("message='")
+            .append(message)
+            .append("'")
+            .append(", errorCode='")
+            .append(errorCode)
+            .append("'")
+            .append(", timestamp=")
+            .append(timestamp);
         
         if (hasTechnicalDetails()) {
-            sb.append(", technicalDetails='").append(technicalDetails).append('\\'');
+            sb.append(", technicalDetails='")
+              .append(technicalDetails)
+              .append("'");
         }
         
         if (getCause() != null) {
-            sb.append(", cause=").append(getCause().getClass().getSimpleName())
-              .append("('").append(getCause().getMessage()).append("')");
+            sb.append(", cause=")
+              .append(getCause().getClass().getSimpleName())
+              .append("('")
+              .append(getCause().getMessage())
+              .append("')");
         }
         
         return sb.append('}').toString();

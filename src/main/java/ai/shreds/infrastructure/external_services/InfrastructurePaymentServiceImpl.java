@@ -14,6 +14,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
@@ -39,8 +40,8 @@ public class InfrastructurePaymentServiceImpl implements DomainOutputPortPayment
     }
 
     @Override
-    @CircuitBreaker(name = "paymentService", fallbackMethod = "processPaymentFallback")
-    @Retry(name = "paymentService", fallbackMethod = "processPaymentFallback")
+    @CircuitBreaker(name = "paymentService")
+    @Retry(name = "paymentService")
     public DomainEntityPaymentDetails processPayment(DomainEntityPaymentDetails paymentDetails) {
         try {
             log.debug("Processing payment for order ID: {}, amount: {}", 
@@ -88,7 +89,7 @@ public class InfrastructurePaymentServiceImpl implements DomainOutputPortPayment
         }
     }
 
-    private DomainEntityPaymentDetails processPaymentFallback(DomainEntityPaymentDetails paymentDetails, Exception e) {
+    public DomainEntityPaymentDetails processPaymentFallback(DomainEntityPaymentDetails paymentDetails, Exception e) {
         log.error("Payment service fallback triggered due to: {}", e.getMessage());
         paymentDetails.setStatus(new DomainValuePaymentStatus(SharedPaymentStatusEnum.FAILED));
         return paymentDetails;

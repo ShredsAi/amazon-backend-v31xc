@@ -3,13 +3,13 @@ package ai.shreds.domain.events;
 import ai.shreds.shared.enums.SharedPaymentStatusEnum;
 import java.time.LocalDateTime;
 
-public class OrderPaymentStatusChangedEvent implements DomainEvent {
+public class PaymentStatusChangedEvent implements DomainEvent {
     private final String paymentId;
     private final SharedPaymentStatusEnum oldStatus;
     private final SharedPaymentStatusEnum newStatus;
     private final LocalDateTime occurredOn;
 
-    public OrderPaymentStatusChangedEvent(String paymentId, SharedPaymentStatusEnum oldStatus, SharedPaymentStatusEnum newStatus) {
+    public PaymentStatusChangedEvent(String paymentId, SharedPaymentStatusEnum oldStatus, SharedPaymentStatusEnum newStatus) {
         this.paymentId = paymentId;
         this.oldStatus = oldStatus;
         this.newStatus = newStatus;
@@ -23,7 +23,7 @@ public class OrderPaymentStatusChangedEvent implements DomainEvent {
 
     @Override
     public String getEventType() {
-        return "ORDER_PAYMENT_STATUS_CHANGED";
+        return "PAYMENT_STATUS_CHANGED";
     }
 
     public String getPaymentId() {

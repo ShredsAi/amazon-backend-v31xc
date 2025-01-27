@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -69,10 +70,20 @@ public class InfrastructureInventoryServiceImpl implements DomainOutputPortInven
                     .reserveItems(request);
 
             if (response.getSuccess()) {
-                log.info("Successfully reserved {} items", items.size());
+                log.info("Successfully reserved {} items with reservation ID: {}", 
+                    items.size(), response.getReservationId());
                 return true;
             } else {
                 log.warn("Failed to reserve items: {}", response.getMessage());
+                if (!response.getErrorsList().isEmpty()) {
+                    response.getErrorsList().forEach(error ->
+                        log.warn("Product ID: {}, Error: {} - {}, Available: {}",
+                            error.getProductId(),
+                            error.getErrorCode(),
+                            error.getErrorMessage(),
+                            error.getAvailableQuantity())
+                    );
+                }
                 return false;
             }
 
@@ -99,6 +110,9 @@ public class InfrastructureInventoryServiceImpl implements DomainOutputPortInven
 
             if (!response.getSuccess()) {
                 log.error("Failed to release items: {}", response.getMessage());
+                if (!response.getFailedProductIdsList().isEmpty()) {
+                    log.error("Failed product IDs: {}", response.getFailedProductIdsList());
+                }
                 throw new InfrastructureServiceException(
                         "Failed to release inventory: " + response.getMessage(),
                         "INVENTORY",
@@ -116,27 +130,35 @@ public class InfrastructureInventoryServiceImpl implements DomainOutputPortInven
     }
 
     private ReserveRequest createReserveRequest(List<DomainEntityOrderItem> items) {
+        String orderId = UUID.randomUUID().toString(); // Generate a unique order ID if not available
         List<ReserveItem> reserveItems = items.stream()
                 .map(item -> ReserveItem.newBuilder()
                         .setProductId(item.getProductId())
                         .setQuantity(item.getQuantity())
+                        .setWarehouseId("") // Set default or get from configuration if needed
                         .build())
                 .collect(Collectors.toList());
 
         return ReserveRequest.newBuilder()
+                .setOrderId(orderId)
                 .addAllItems(reserveItems)
                 .build();
     }
 
     private ReleaseRequest createReleaseRequest(List<DomainEntityOrderItem> items) {
-        List<ReleaseItem> releaseItems = items.stream()
-                .map(item -> ReleaseItem.newBuilder()
+        String orderId = UUID.randomUUID().toString(); // Should ideally use the same orderId from reservation
+        String reservationId = ""; // Should be stored and retrieved from the reservation response
+        List<ReserveItem> releaseItems = items.stream()
+                .map(item -> ReserveItem.newBuilder()
                         .setProductId(item.getProductId())
                         .setQuantity(item.getQuantity())
+                        .setWarehouseId("") // Set default or get from configuration if needed
                         .build())
                 .collect(Collectors.toList());
 
         return ReleaseRequest.newBuilder()
+                .setOrderId(orderId)
+                .setReservationId(reservationId)
                 .addAllItems(releaseItems)
                 .build();
     }

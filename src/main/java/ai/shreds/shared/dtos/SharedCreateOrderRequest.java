@@ -1,7 +1,7 @@
 package ai.shreds.shared.dtos;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.io.Serializable;

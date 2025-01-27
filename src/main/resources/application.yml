@@ -43,18 +43,53 @@ payment:
     connect-timeout: 5000
     read-timeout: 5000
 
+inventory:
+  service:
+    host: localhost
+    port: 9090
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        registerHealthIndicator: true
+        allowHealthIndicatorToFail: true
+  retry:
+    instances:
+      paymentService:
+        maxAttempts: 3
+        waitDuration: 1000
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+
+spring:
+  retry:
+    maxAttempts: 3
+    initialInterval: 1000
+    multiplier: 2
+    maxInterval: 5000
+
 logging:
   level:
     root: INFO
     ai.shreds: DEBUG
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    io.github.resilience4j: DEBUG
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,circuitbreakers,retries
   endpoint:
     health:
       show-details: always
+    circuitbreakers:
+      enabled: true
+    retries:
+      enabled: true

@@ -1,45 +1,34 @@
 package ai.shreds.domain.events;
 
 import ai.shreds.shared.enums.SharedOrderStatusEnum;
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.time.LocalDateTime;
 
-/**
- * Domain event representing a change in order reservation state.
- */
-public class OrderReservationStateChangedEvent extends DomainEvent {
-
-    private final SharedOrderStatusEnum oldState;
+public class OrderReservationStateChangedEvent implements DomainEvent {
+    private final Long orderId;
     private final SharedOrderStatusEnum newState;
+    private final LocalDateTime occurredOn;
 
-    @JsonCreator
-    public OrderReservationStateChangedEvent(
-            @JsonProperty("orderId") String orderId,
-            @JsonProperty("oldState") SharedOrderStatusEnum oldState,
-            @JsonProperty("newState") SharedOrderStatusEnum newState) {
-        super("ORDER_RESERVATION_STATE_CHANGED", orderId, "ORDER");
-        this.oldState = oldState;
+    public OrderReservationStateChangedEvent(Long orderId, SharedOrderStatusEnum newState) {
+        this.orderId = orderId;
         this.newState = newState;
+        this.occurredOn = LocalDateTime.now();
     }
 
-    public SharedOrderStatusEnum getOldState() {
-        return oldState;
+    @Override
+    public LocalDateTime getOccurredOn() {
+        return occurredOn;
+    }
+
+    @Override
+    public String getEventType() {
+        return "ORDER_RESERVATION_STATE_CHANGED";
+    }
+
+    public Long getOrderId() {
+        return orderId;
     }
 
     public SharedOrderStatusEnum getNewState() {
         return newState;
-    }
-
-    @Override
-    public String getEventData() {
-        return String.format("{\"%s\": \"%s\", \"%s\": \"%s\"}",
-            "oldState", oldState,
-            "newState", newState);
-    }
-
-    @Override
-    public String toString() {
-        return String.format("%s[orderId=%s, oldState=%s, newState=%s]",
-            getClass().getSimpleName(), getAggregateId(), oldState, newState);
     }
 }
