@@ -16,7 +16,7 @@ import java.util.Objects;
 public class DomainEntityPaymentDetails {
 
     private static final List<String> VALID_PAYMENT_METHODS = List.of(
-        "CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER", "DIGITAL_WALLET"
+        "CREDIT_CARD", "DEBIT_CARD", "BANK_TRANSFER", "DIGITAL_WALLET", "PAYPAL"
     );
 
     private String paymentId;
@@ -139,6 +139,13 @@ public class DomainEntityPaymentDetails {
 
     public DomainValuePaymentStatus getStatus() {
         return status;
+    }
+
+    public void setStatus(DomainValuePaymentStatus status) {
+        if (status == null) {
+            throw new DomainPaymentException("Payment status cannot be null");
+        }
+        this.status = status;
     }
 
     @Override
