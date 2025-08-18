@@ -2,6 +2,7 @@ package ai.shreds;
 
 import ai.shreds.domain.entities.DomainEntityOrderItem;
 import ai.shreds.domain.entities.DomainEntityPaymentDetails;
+import ai.shreds.domain.exceptions.DomainExceptionPaymentFailed;
 import ai.shreds.domain.ports.DomainOutputPortInventoryService;
 import ai.shreds.domain.ports.DomainOutputPortPaymentService;
 import ai.shreds.domain.value_objects.DomainValueMoney;
@@ -50,6 +51,8 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -177,6 +180,78 @@ class OrderCreationIntegrationTest {
         String logOutput = output.toString();
         System.out.println("\n" + "=".repeat(100));
         System.out.println("ORDER CREATION TEST LOGS:");
+        System.out.println("=".repeat(100));
+        System.out.println(logOutput);
+        System.out.println("=".repeat(100) + "\n");
+    }
+
+    @Test
+    void When_Payment_Fails_Then_Order_Creation_Fails_And_Inventory_Released(CapturedOutput output) {
+        logger.info("=== STARTING PAYMENT FAILURE TEST ===");
+        
+        // Given: Mock successful inventory reservation
+        when(inventoryService.reserveItems(anyList())).thenReturn(true);
+        
+        // Given: Mock successful inventory release (for rollback)
+        doNothing().when(inventoryService).releaseItems(anyList());
+        
+        // Given: Mock payment failure
+        DomainExceptionPaymentFailed paymentFailedException = DomainExceptionPaymentFailed.newBuilder()
+                .message("Payment declined by issuer")
+                .reason(DomainExceptionPaymentFailed.FailureReason.CARD_DECLINED)
+                .paymentId("payment-failed-123")
+                .paymentMethod("CREDIT_CARD")
+                .amount(DomainValueMoney.of(BigDecimal.valueOf(99.99), "USD"))
+                .build();
+        
+        when(paymentService.processPayment(any(DomainEntityPaymentDetails.class)))
+                .thenThrow(paymentFailedException);
+        
+        // Given: Valid order request
+        SharedCreateOrderRequest request = new SharedCreateOrderRequest();
+        request.setUserId(456L);
+        request.setPaymentMethod("CREDIT_CARD");
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<SharedCreateOrderRequest> entity = new HttpEntity<>(request, headers);
+        
+        String orderUrl = "http://localhost:" + port + "/api/orders";
+        
+        logger.info("Sending order creation request with payment failure scenario to: {}", orderUrl);
+        logger.info("Request payload: {}", request);
+        
+        // When: Attempt to create order (should fail)
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                orderUrl, entity, String.class);
+        
+        logger.info("Received response status: {}", response.getStatusCode());
+        logger.info("Response body: {}", response.getBody());
+        
+        // Then: Verify failure response
+        assertAll(
+            "Payment failure response verification",
+            () -> assertThat(response.getStatusCode()).isIn(HttpStatus.BAD_REQUEST, HttpStatus.INTERNAL_SERVER_ERROR),
+            () -> assertThat(response.getBody()).isNotNull(),
+            () -> assertThat(response.getBody()).containsIgnoringCase("payment")
+        );
+        
+        // Then: Verify no order was persisted in database
+        assertThat(orderRepository.findAll()).isEmpty();
+        assertThat(orderItemRepository.findAll()).isEmpty();
+        assertThat(paymentDetailsRepository.findAll()).isEmpty();
+        
+        // Then: Verify external service interactions
+        verify(inventoryService, times(1)).reserveItems(anyList());
+        verify(inventoryService, times(1)).releaseItems(anyList()); // Inventory should be released on payment failure
+        verify(paymentService, times(1)).processPayment(any(DomainEntityPaymentDetails.class));
+        
+        logger.info("=== PAYMENT FAILURE TEST COMPLETED SUCCESSFULLY ===");
+        
+        // Print logs for analysis
+        String logOutput = output.toString();
+        System.out.println("\n" + "=".repeat(100));
+        System.out.println("PAYMENT FAILURE TEST LOGS:");
         System.out.println("=".repeat(100));
         System.out.println(logOutput);
         System.out.println("=".repeat(100) + "\n");
