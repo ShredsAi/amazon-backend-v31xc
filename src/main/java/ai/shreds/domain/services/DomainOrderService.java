@@ -54,11 +54,18 @@ public class DomainOrderService implements DomainInputPortCreateOrder {
 
             return savedOrder;
 
-        } catch (DomainExceptionInvalidOrder | DomainInventoryException | 
-                 DomainPaymentException | DomainExceptionPaymentFailed e) {
+        } catch (DomainExceptionPaymentFailed e) {
+            // Handle specific payment failures
+            throw e;
+        } catch (DomainPaymentException e) {
+            // Handle general payment errors
+            throw e;
+        } catch (DomainExceptionInvalidOrder | DomainInventoryException e) {
+            // Handle validation and inventory errors
             throw e;
         } catch (Exception e) {
-            throw new DomainOrderException("Unexpected error during order processing: " + e.getMessage());
+            throw new DomainOrderException("Unexpected error during order processing: " + e.getMessage(), 
+                "ORDER_PROCESSING_ERROR");
         }
     }
 
@@ -151,11 +158,17 @@ public class DomainOrderService implements DomainInputPortCreateOrder {
             case FAILED:
             case DECLINED:
                 handlePaymentFailure(order, 
-                    new DomainExceptionPaymentFailed("Payment " + paymentStatus.toString().toLowerCase()));
+                    DomainExceptionPaymentFailed.newBuilder()
+                        .message("Payment " + paymentStatus.toString().toLowerCase())
+                        .reason(DomainExceptionPaymentFailed.FailureReason.CARD_DECLINED)
+                        .build());
                 break;
             default:
                 handlePaymentFailure(order, 
-                    new DomainExceptionPaymentFailed("Unexpected payment status: " + paymentStatus));
+                    DomainExceptionPaymentFailed.newBuilder()
+                        .message("Unexpected payment status: " + paymentStatus)
+                        .reason(DomainExceptionPaymentFailed.FailureReason.UNKNOWN)
+                        .build());
         }
     }
 
@@ -171,6 +184,14 @@ public class DomainOrderService implements DomainInputPortCreateOrder {
             throw new DomainPaymentException("Payment failed and inventory release failed: " + 
                 e.getMessage() + ". Release error: " + releaseException.getMessage());
         }
-        throw new DomainExceptionPaymentFailed(e.getMessage());
+        
+        if (e instanceof DomainExceptionPaymentFailed) {
+            throw (DomainExceptionPaymentFailed) e;
+        } else {
+            throw DomainExceptionPaymentFailed.newBuilder()
+                .message(e.getMessage())
+                .reason(DomainExceptionPaymentFailed.FailureReason.TECHNICAL_ERROR)
+                .build();
+        }
     }
 }

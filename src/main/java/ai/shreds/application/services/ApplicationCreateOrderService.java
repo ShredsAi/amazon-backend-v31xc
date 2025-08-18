@@ -24,63 +24,89 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Service implementation for creating orders in the application layer.
- * Handles the orchestration of order creation, including validation,
- * domain entity creation, and response mapping.
- */
 @Service
 public class ApplicationCreateOrderService implements ApplicationCreateOrderInputPort {
 
     private static final Logger logger = LoggerFactory.getLogger(ApplicationCreateOrderService.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
 
-    private final DomainInputPortCreateOrder domainOrderCreator;
+    private final DomainInputPortCreateOrder domainorderCreator;
 
-    public ApplicationCreateOrderService(DomainInputPortCreateOrder domainOrderCreator) {
-        this.domainOrderCreator = domainOrderCreator;
+    public ApplicationCreateOrderService(DomainInputPortCreateOrder domainorderCreator) {
+        this.domainorderCreator = domainorderCreator;
     }
 
     @Override
     @Transactional
     public SharedOrderResponse createOrder(SharedCreateOrderRequest request) {
         logger.debug("Starting order creation process for user: {}", request.getUserId());
-        
+
         try {
             // Validate the request
             validateOrderRequest(request);
 
             // Create and prepare the domain order
             DomainEntityOrder domainOrder = createDomainOrder(request);
-            
+
             // Execute the order creation through the domain layer
-            DomainEntityOrder createdOrder = domainOrderCreator.execute(domainOrder);
-            
-            logger.info("Successfully created order with ID: {} for user: {}", 
+            DomainEntityOrder createdOrder = domainorderCreator.execute(domainOrder);
+
+            logger.info("Successfully created order with ID: {} for user: {}",
                        createdOrder.getId(), createdOrder.getUserId());
-            
+
             // Map and return the response
             return mapToSharedOrderResponse(createdOrder);
-            
-        } catch (DomainOrderException | DomainInventoryException | 
-                 DomainPaymentException | DomainExceptionInvalidOrder | 
-                 DomainExceptionPaymentFailed e) {
-            logger.error("Domain error during order creation for user {}: {}", 
-                        request.getUserId(), e.getMessage());
+
+        } catch (DomainExceptionPaymentFailed e) {
+            logger.error("Payment failed for user {}: {}", request.getUserId(), e.getMessage());
             throw new ApplicationOrderCreationException(
-                String.format("Failed to create order: %s", e.getMessage()),
-                "ERR-ORDER-CREATION",
+                String.format("Payment failed: %s", e.getMessage()),
+                "ERR-PAYMENT-FAILED",
+                LocalDateTime.now(),
+                e.getMessage(),
+                e
+            );
+        } catch (DomainPaymentException e) {
+            logger.error("Payment error for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Payment error: %s", e.getMessage()),
+                "ERR-PAYMENT",
+                LocalDateTime.now(),
+                e.getMessage(),
+                e
+            );
+        } catch (DomainInventoryException e) {
+            logger.error("Inventory error for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Inventory error: %s", e.getMessage()),
+                "ERR-INVENTORY",
+                LocalDateTime.now(),
+                e.getMessage(),
+                e
+            );
+        } catch (DomainExceptionInvalidOrder e) {
+            logger.error("Invalid order for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Invalid order: %s", e.getMessage()),
+                "ERR-INVALID-ORDER",
+                LocalDateTime.now(),
+                e.getMessage(),
+                e
+            );
+        } catch (DomainOrderException e) {
+            logger.error("Domain error for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Order error: %s", e.getMessage()),
+                "ERR-ORDER",
                 LocalDateTime.now(),
                 e.getMessage(),
                 e
             );
         } catch (Exception e) {
-            logger.error("Unexpected error during order creation for user {}: {}", 
+            logger.error("Unexpected error during order creation for user {}: {}",
                         request.getUserId(), e.getMessage(), e);
             throw new ApplicationOrderCreationException(
                 "An unexpected error occurred while creating the order",
@@ -96,18 +122,18 @@ public class ApplicationCreateOrderService implements ApplicationCreateOrderInpu
         DomainEntityOrder order = new DomainEntityOrder();
         order.setUserId(request.getUserId());
         order.setCreatedAt(LocalDateTime.now());
-        
+
         // Set initial status
-        order.setPaymentStatus(new DomainValuePaymentStatus(SharedPaymentStatusEnum.PENDING));
-        order.setReservationState(new DomainValueOrderStatus(SharedOrderStatusEnum.PENDING));
-        
+        order.setPaymentStatus(DomainValuePaymentStatus.of(SharedPaymentStatusEnum.PENDING));
+        order.setReservationState(DomainValueOrderStatus.of(SharedOrderStatusEnum.PENDING));
+
         // Create payment details
         DomainEntityPaymentDetails paymentDetails = new DomainEntityPaymentDetails();
         paymentDetails.setPaymentMethod(request.getPaymentMethod());
-        
-        logger.debug("Created domain order for user: {} with payment method: {}", 
+
+        logger.debug("Created domain order for user: {} with payment method: {}",
                     request.getUserId(), request.getPaymentMethod());
-        
+
         return order;
     }
 
@@ -119,15 +145,15 @@ public class ApplicationCreateOrderService implements ApplicationCreateOrderInpu
         response.setPaymentStatus(domainOrder.getPaymentStatus().getStatus().name());
         response.setReservationState(domainOrder.getReservationState().getStatus().name());
         response.setCreatedAt(domainOrder.getCreatedAt().format(DATE_FORMATTER));
-        
+
         List<SharedOrderItemResponse> items = domainOrder.getItems().stream()
             .map(this::mapToSharedOrderItemResponse)
             .collect(Collectors.toList());
         response.setItems(items);
-        
-        logger.debug("Mapped domain order {} to response with {} items", 
+
+        logger.debug("Mapped domain order {} to response with {} items",
                     domainOrder.getId(), items.size());
-        
+
         return response;
     }
 
@@ -137,5 +163,23 @@ public class ApplicationCreateOrderService implements ApplicationCreateOrderInpu
             item.getQuantity(),
             item.getPrice().getAmount()
         );
+    }
+
+    @Override
+    public void validateOrderRequest(SharedCreateOrderRequest request) {
+        if (request.getUserId() == null || request.getUserId() <= 0) {
+            throw new ApplicationOrderValidationException(
+                "User ID is invalid",
+                "ERR-INVALID-USER",
+                LocalDateTime.now()
+            );
+        }
+        if (request.getPaymentMethod() == null || request.getPaymentMethod().trim().isEmpty()) {
+            throw new ApplicationOrderValidationException(
+                "Payment method is missing",
+                "ERR-INVALID-PAYMENT",
+                LocalDateTime.now()
+            );
+        }
     }
 }

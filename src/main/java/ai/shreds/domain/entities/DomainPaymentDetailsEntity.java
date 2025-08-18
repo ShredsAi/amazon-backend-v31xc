@@ -31,7 +31,7 @@ public class DomainPaymentDetailsEntity {
 
     protected DomainPaymentDetailsEntity() {
         this.domainEvents = new ArrayList<>();
-        this.status = new DomainValuePaymentStatus(SharedPaymentStatusEnum.PENDING);
+        this.status = DomainValuePaymentStatus.of(SharedPaymentStatusEnum.PENDING);
     }
 
     public DomainPaymentDetailsEntity(Long orderId, String paymentMethod, DomainValueMoney amount) {
@@ -49,7 +49,7 @@ public class DomainPaymentDetailsEntity {
         DomainValuePaymentStatus oldStatus = this.status;
         this.status = this.status.transition(newStatus);
         addDomainEvent(new OrderPaymentStatusChangedEvent(
-            this.paymentId,
+            this.orderId,
             oldStatus.getStatus(),
             newStatus
         ));

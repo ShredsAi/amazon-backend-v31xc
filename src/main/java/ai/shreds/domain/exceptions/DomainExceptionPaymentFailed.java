@@ -33,8 +33,13 @@ public class DomainExceptionPaymentFailed extends DomainPaymentException {
             this.description = description;
         }
 
-        public String getCode() { return code; }
-        public String getDescription() { return description; }
+        public String getCode() {
+            return code;
+        }
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     /**
@@ -61,8 +66,8 @@ public class DomainExceptionPaymentFailed extends DomainPaymentException {
      * @param paymentMethod The payment method used
      * @param amount The amount that failed to process
      */
-    public DomainExceptionPaymentFailed(String message, FailureReason reason, 
-            String paymentId, String paymentMethod, DomainValueMoney amount) {
+    public DomainExceptionPaymentFailed(String message, FailureReason reason,
+                                        String paymentId, String paymentMethod, DomainValueMoney amount) {
         super(message, PaymentError.builder()
             .paymentId(paymentId)
             .paymentMethod(paymentMethod)
@@ -75,21 +80,21 @@ public class DomainExceptionPaymentFailed extends DomainPaymentException {
     }
 
     /**
+     * Creates a new builder for constructing payment failed exceptions.
+     *
+     * @return A new builder instance
+     */
+    public static Builder newBuilder() {
+        return new Builder();
+    }
+
+    /**
      * Gets the reason for the payment failure.
      *
      * @return The failure reason
      */
     public FailureReason getFailureReason() {
         return failureReason;
-    }
-
-    /**
-     * Creates a builder for constructing payment failed exceptions.
-     *
-     * @return A new builder instance
-     */
-    public static Builder builder() {
-        return new Builder();
     }
 
     /**
@@ -131,16 +136,18 @@ public class DomainExceptionPaymentFailed extends DomainPaymentException {
             if (paymentId == null || paymentMethod == null || amount == null) {
                 return new DomainExceptionPaymentFailed(message, reason);
             }
-            return new DomainExceptionPaymentFailed(message, reason, 
+            return new DomainExceptionPaymentFailed(message, reason,
                 paymentId, paymentMethod, amount);
         }
     }
 
     @Override
     public String toString() {
-        return String.format("%s%nFailure Reason: %s - %s", 
-            super.toString(), 
-            failureReason.getCode(), 
-            failureReason.getDescription());
+        return String.format(
+            "%s%nFailure Reason: %s - %s",
+            super.toString(),
+            failureReason.getCode(),
+            failureReason.getDescription()
+        );
     }
 }

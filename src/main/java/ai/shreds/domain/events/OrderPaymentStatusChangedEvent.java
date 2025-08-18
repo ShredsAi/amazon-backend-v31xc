@@ -1,33 +1,22 @@
 package ai.shreds.domain.events;
 
+import ai.shreds.domain.value_objects.DomainValuePaymentStatus;
 import ai.shreds.shared.enums.SharedPaymentStatusEnum;
-import java.time.LocalDateTime;
 
-public class OrderPaymentStatusChangedEvent implements DomainEvent {
-    private final String paymentId;
+public class OrderPaymentStatusChangedEvent extends DomainEvent {
+    private final Long orderId;
     private final SharedPaymentStatusEnum oldStatus;
     private final SharedPaymentStatusEnum newStatus;
-    private final LocalDateTime occurredOn;
 
-    public OrderPaymentStatusChangedEvent(String paymentId, SharedPaymentStatusEnum oldStatus, SharedPaymentStatusEnum newStatus) {
-        this.paymentId = paymentId;
+    public OrderPaymentStatusChangedEvent(Long orderId, SharedPaymentStatusEnum oldStatus, SharedPaymentStatusEnum newStatus) {
+        super();
+        this.orderId = orderId;
         this.oldStatus = oldStatus;
         this.newStatus = newStatus;
-        this.occurredOn = LocalDateTime.now();
     }
 
-    @Override
-    public LocalDateTime getOccurredOn() {
-        return occurredOn;
-    }
-
-    @Override
-    public String getEventType() {
-        return "ORDER_PAYMENT_STATUS_CHANGED";
-    }
-
-    public String getPaymentId() {
-        return paymentId;
+    public Long getOrderId() {
+        return orderId;
     }
 
     public SharedPaymentStatusEnum getOldStatus() {

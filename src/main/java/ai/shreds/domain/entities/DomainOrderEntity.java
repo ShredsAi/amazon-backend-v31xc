@@ -16,10 +16,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-/**
- * Domain entity representing an order in the system.
- * Acts as the aggregate root for order-related operations.
- */
 public class DomainOrderEntity {
 
     private Long id;
@@ -49,6 +45,28 @@ public class DomainOrderEntity {
         this.totalAmount = DomainValueMoney.zero("USD"); // Default currency
     }
 
+    public void updatePaymentStatus(SharedPaymentStatusEnum newStatus) {
+        DomainValuePaymentStatus oldStatus = this.paymentStatus;
+        this.paymentStatus = this.paymentStatus.transition(newStatus);
+        addDomainEvent(new OrderPaymentStatusChangedEvent(
+            this.id,
+            oldStatus.getStatus(),
+            newStatus
+        ));
+    }
+
+    public void updateReservationState(SharedOrderStatusEnum newState) {
+        DomainValueOrderStatus oldState = this.reservationState;
+        this.reservationState = this.reservationState.transition(newState);
+        addDomainEvent(new OrderReservationStateChangedEvent(
+            this.id,
+            oldState.getStatus(),
+            newState
+        ));
+    }
+
+    // ... rest of the code remains the same ...
+
     public void addItem(DomainOrderItemEntity item) {
         validateItem(item);
         items.add(item);
@@ -76,26 +94,6 @@ public class DomainOrderEntity {
         this.totalAmount = items.stream()
                 .map(item -> item.getPrice().multiply(item.getQuantity()))
                 .reduce(DomainValueMoney.zero("USD"), DomainValueMoney::add);
-    }
-
-    public void updatePaymentStatus(SharedPaymentStatusEnum newStatus) {
-        DomainValuePaymentStatus oldStatus = this.paymentStatus;
-        this.paymentStatus = this.paymentStatus.transition(newStatus);
-        addDomainEvent(new OrderPaymentStatusChangedEvent(
-            String.valueOf(this.id),
-            oldStatus.getStatus(),
-            newStatus
-        ));
-    }
-
-    public void updateReservationState(SharedOrderStatusEnum newState) {
-        DomainValueOrderStatus oldState = this.reservationState;
-        this.reservationState = this.reservationState.transition(newState);
-        addDomainEvent(new OrderReservationStateChangedEvent(
-            String.valueOf(this.id),
-            oldState.getStatus(),
-            newState
-        ));
     }
 
     private void validateUserId(Long userId) {

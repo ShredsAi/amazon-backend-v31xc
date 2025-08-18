@@ -1,31 +1,13 @@
 package ai.shreds.domain.value_objects;
 
-import ai.shreds.domain.exceptions.DomainPaymentException;
 import ai.shreds.shared.enums.SharedPaymentStatusEnum;
+import lombok.Value;
 
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
-public final class DomainValuePaymentStatus {
-
-    private final SharedPaymentStatusEnum status;
-
-    private static final Map<SharedPaymentStatusEnum, List<SharedPaymentStatusEnum>> VALID_TRANSITIONS;
-
-    static {
-        VALID_TRANSITIONS = new EnumMap<>(SharedPaymentStatusEnum.class);
-        VALID_TRANSITIONS.put(SharedPaymentStatusEnum.PENDING, 
-            List.of(SharedPaymentStatusEnum.SUCCESS, SharedPaymentStatusEnum.FAILED, 
-                    SharedPaymentStatusEnum.DECLINED));
-        VALID_TRANSITIONS.put(SharedPaymentStatusEnum.SUCCESS, List.of());
-        VALID_TRANSITIONS.put(SharedPaymentStatusEnum.FAILED, List.of());
-        VALID_TRANSITIONS.put(SharedPaymentStatusEnum.DECLINED, List.of());
-    }
+@Value
+public class DomainValuePaymentStatus {
+    SharedPaymentStatusEnum status;
 
     private DomainValuePaymentStatus(SharedPaymentStatusEnum status) {
-        validateStatus(status);
         this.status = status;
     }
 
@@ -37,27 +19,8 @@ public final class DomainValuePaymentStatus {
         return new DomainValuePaymentStatus(SharedPaymentStatusEnum.PENDING);
     }
 
-    private void validateStatus(SharedPaymentStatusEnum status) {
-        if (status == null) {
-            throw new DomainPaymentException("Payment status cannot be null");
-        }
-    }
-
-    public boolean canTransitionTo(SharedPaymentStatusEnum newStatus) {
-        if (newStatus == null) {
-            return false;
-        }
-        return VALID_TRANSITIONS.get(this.status).contains(newStatus);
-    }
-
-    public DomainValuePaymentStatus transition(SharedPaymentStatusEnum newStatus) {
-        if (!canTransitionTo(newStatus)) {
-            throw new DomainPaymentException(
-                String.format("Invalid payment status transition from %s to %s", 
-                    this.status, newStatus)
-            );
-        }
-        return new DomainValuePaymentStatus(newStatus);
+    public SharedPaymentStatusEnum getStatus() {
+        return status;
     }
 
     public boolean isPending() {
@@ -76,29 +39,7 @@ public final class DomainValuePaymentStatus {
         return status == SharedPaymentStatusEnum.DECLINED;
     }
 
-    public boolean isTerminal() {
-        return isSuccess() || isFailed() || isDeclined();
-    }
-
-    public SharedPaymentStatusEnum getStatus() {
-        return status;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        DomainValuePaymentStatus that = (DomainValuePaymentStatus) o;
-        return status == that.status;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(status);
-    }
-
-    @Override
-    public String toString() {
-        return status.toString();
+    public DomainValuePaymentStatus transition(SharedPaymentStatusEnum newStatus) {
+        return DomainValuePaymentStatus.of(newStatus);
     }
 }

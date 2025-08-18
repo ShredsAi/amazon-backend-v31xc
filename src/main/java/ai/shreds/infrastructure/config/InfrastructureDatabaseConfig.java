@@ -2,7 +2,8 @@ package ai.shreds.infrastructure.config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,11 +20,12 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import javax.sql.DataSource;
 import java.util.Properties;
 
-@Slf4j
 @Configuration
 @EnableTransactionManagement
 @EnableJpaRepositories(basePackages = "ai.shreds.infrastructure.repositories")
 public class InfrastructureDatabaseConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(InfrastructureDatabaseConfig.class);
 
     @Autowired
     private Environment environment;
@@ -58,7 +60,7 @@ public class InfrastructureDatabaseConfig {
         config.setValidationTimeout(3000);
 
         HikariDataSource dataSource = new HikariDataSource(config);
-        log.info("Configured HikariCP connection pool with maximum size: {}", config.getMaximumPoolSize());
+        logger.info("Configured HikariCP connection pool with maximum size: {}", config.getMaximumPoolSize());
         return dataSource;
     }
 

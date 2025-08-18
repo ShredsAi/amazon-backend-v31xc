@@ -45,29 +45,52 @@ public class ApplicationServiceCreateOrder implements ApplicationInputPortCreate
     @Transactional
     public SharedOrderResponse createOrder(SharedCreateOrderRequest request) {
         logger.debug("Creating order for user: {}", request.getUserId());
-        
+
         try {
             validateRequest(request);
             DomainEntityOrder domainOrder = mapRequestToDomain(request);
             DomainEntityOrder savedOrder = domainCreateOrder.execute(domainOrder);
-            
-            logger.info("Successfully created order with ID: {} for user: {}", 
-                       savedOrder.getId(), savedOrder.getUserId());
-            
+
+            logger.info("Successfully created order with ID: {} for user: {}", savedOrder.getId(), savedOrder.getUserId());
+
             return mapDomainToShared(savedOrder);
-            
-        } catch (DomainOrderException | DomainInventoryException | 
-                 DomainPaymentException | DomainExceptionInvalidOrder | 
-                 DomainExceptionPaymentFailed e) {
-            logger.error("Failed to create order for user {}: {}", request.getUserId(), e.getMessage());
+        } catch (DomainExceptionPaymentFailed e) {
+            logger.error("Payment failed for user {}: {}", request.getUserId(), e.getMessage());
             throw new ApplicationOrderCreationException(
-                String.format("Failed to create order: %s", e.getMessage()),
-                "ERR-ORDER-CREATION",
+                String.format("Payment failed: %s", e.getMessage()),
+                "ERR-PAYMENT-FAILED",
+                LocalDateTime.now()
+            );
+        } catch (DomainExceptionInvalidOrder e) {
+            logger.error("Invalid order for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Invalid order: %s", e.getMessage()),
+                "ERR-INVALID-ORDER",
+                LocalDateTime.now()
+            );
+        } catch (DomainInventoryException e) {
+            logger.error("Inventory error for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Inventory error: %s", e.getMessage()),
+                "ERR-INVENTORY",
+                LocalDateTime.now()
+            );
+        } catch (DomainPaymentException e) {
+            logger.error("Payment error for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Payment error: %s", e.getMessage()),
+                "ERR-PAYMENT",
+                LocalDateTime.now()
+            );
+        } catch (DomainOrderException e) {
+            logger.error("Order error for user {}: {}", request.getUserId(), e.getMessage());
+            throw new ApplicationOrderCreationException(
+                String.format("Order error: %s", e.getMessage()),
+                "ERR-ORDER",
                 LocalDateTime.now()
             );
         } catch (Exception e) {
-            logger.error("Unexpected error while creating order for user {}: {}", 
-                        request.getUserId(), e.getMessage());
+            logger.error("Unexpected error while creating order for user {}: {}", request.getUserId(), e.getMessage());
             throw new ApplicationOrderCreationException(
                 "An unexpected error occurred while creating the order",
                 "ERR-UNEXPECTED",
@@ -114,11 +137,9 @@ public class ApplicationServiceCreateOrder implements ApplicationInputPortCreate
         DomainEntityOrder order = new DomainEntityOrder();
         order.setUserId(request.getUserId());
         order.setCreatedAt(LocalDateTime.now());
-        order.setPaymentStatus(new DomainValuePaymentStatus(SharedPaymentStatusEnum.PENDING));
-        order.setReservationState(new DomainValueOrderStatus(SharedOrderStatusEnum.PENDING));
-        
-        // Note: The actual items will be retrieved from the cart service by the domain layer
-        // The domain layer will handle the cart retrieval, inventory check, and price calculation
+        order.setPaymentStatus(DomainValuePaymentStatus.of(SharedPaymentStatusEnum.PENDING));
+        order.setReservationState(DomainValueOrderStatus.of(SharedOrderStatusEnum.PENDING));
+
         return order;
     }
 
@@ -130,12 +151,12 @@ public class ApplicationServiceCreateOrder implements ApplicationInputPortCreate
         response.setPaymentStatus(domainOrder.getPaymentStatus().getStatus().name());
         response.setReservationState(domainOrder.getReservationState().getStatus().name());
         response.setCreatedAt(domainOrder.getCreatedAt().format(DATE_FORMATTER));
-        
+
         List<SharedOrderItemResponse> items = domainOrder.getItems().stream()
             .map(this::mapDomainItemToShared)
             .collect(Collectors.toList());
         response.setItems(items);
-        
+
         return response;
     }
 

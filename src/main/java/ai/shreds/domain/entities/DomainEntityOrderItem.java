@@ -21,14 +21,14 @@ public class DomainEntityOrderItem {
         validateQuantity(quantity);
         validatePrice(price);
         validateProductId(productId);
-        
+
         this.productId = productId;
         this.quantity = quantity;
         this.price = price;
     }
 
     public DomainValueMoney calculateSubtotal() {
-        return new DomainValueMoney(
+        return DomainValueMoney.of(
             price.getAmount().multiply(new BigDecimal(quantity)),
             price.getCurrency()
         );

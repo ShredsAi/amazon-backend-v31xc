@@ -28,7 +28,7 @@ public class DomainEntityPaymentDetails {
 
     public DomainEntityPaymentDetails() {
         this.domainEvents = new ArrayList<>();
-        this.status = new DomainValuePaymentStatus(SharedPaymentStatusEnum.PENDING);
+        this.status = DomainValuePaymentStatus.of(SharedPaymentStatusEnum.PENDING);
     }
 
     public DomainEntityPaymentDetails(Long orderId, String paymentMethod, DomainValueMoney amount) {
@@ -45,7 +45,7 @@ public class DomainEntityPaymentDetails {
     public void updateStatus(SharedPaymentStatusEnum newStatus) {
         validateStatusTransition(newStatus);
         DomainValuePaymentStatus oldStatus = this.status;
-        this.status = new DomainValuePaymentStatus(newStatus);
+        this.status = DomainValuePaymentStatus.of(newStatus);
         addDomainEvent(new PaymentStatusChangedEvent(this.paymentId, oldStatus.getStatus(), newStatus));
     }
 
@@ -53,7 +53,7 @@ public class DomainEntityPaymentDetails {
         if (status.getStatus() != SharedPaymentStatusEnum.PENDING) {
             throw new DomainPaymentException("Cannot change status of non-pending payment");
         }
-        if (!List.of(SharedPaymentStatusEnum.SUCCESS, SharedPaymentStatusEnum.FAILED, 
+        if (!List.of(SharedPaymentStatusEnum.SUCCESS, SharedPaymentStatusEnum.FAILED,
                      SharedPaymentStatusEnum.DECLINED).contains(newStatus)) {
             throw new DomainPaymentException("Invalid payment status transition");
         }

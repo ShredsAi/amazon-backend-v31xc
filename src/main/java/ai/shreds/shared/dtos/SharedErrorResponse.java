@@ -22,4 +22,15 @@ public class SharedErrorResponse {
     @Schema(description = "Timestamp when the error occurred", 
            example = "2023-10-01T10:15:30.000+0000")
     private String timestamp;
+
+    @Schema(description = "Request path where the error occurred", 
+           example = "/api/orders")
+    private String requestPath;
+
+    public SharedErrorResponse(String message, String errorCode, String requestPath) {
+        this.message = message;
+        this.errorCode = errorCode;
+        this.timestamp = java.time.LocalDateTime.now().toString();
+        this.requestPath = requestPath;
+    }
 }
