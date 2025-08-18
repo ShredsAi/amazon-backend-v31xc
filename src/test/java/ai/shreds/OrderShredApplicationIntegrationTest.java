@@ -94,8 +94,7 @@ public class OrderShredApplicationIntegrationTest {
         
         // External services configuration
         registry.add("payment.service.url", () -> "http://localhost:" + paymentServiceMock.port());
-        registry.add("inventory.service.host", () -> "localhost");
-        registry.add("inventory.service.port", () -> inventoryServiceMock.port());
+        registry.add("inventory.service.url", () -> "http://localhost:" + inventoryServiceMock.port());
         registry.add("cart.service.url", () -> "http://localhost:" + cartServiceMock.port());
     }
 
@@ -127,42 +126,51 @@ public class OrderShredApplicationIntegrationTest {
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("{"
-                                + "\"userId\": 123,"
-                                + "\"items\": ["
-                                + "{"
-                                + "\"productId\": 1001,"
-                                + "\"quantity\": 2,"
-                                + "\"price\": 29.99"
-                                + "},"
-                                + "{"
-                                + "\"productId\": 1002,"
-                                + "\"quantity\": 1,"
-                                + "\"price\": 39.99"
-                                + "}"
-                                + "],"
-                                + "\"totalAmount\": 99.97"
+                        .withBody("{\n"
+                                + "\"userId\": 123,\n"
+                                + "\"items\": [\n"
+                                + "{\n"
+                                + "\"productId\": 1001,\n"
+                                + "\"quantity\": 2,\n"
+                                + "\"price\": 29.99\n"
+                                + "},\n"
+                                + "{\n"
+                                + "\"productId\": 1002,\n"
+                                + "\"quantity\": 1,\n"
+                                + "\"price\": 39.99\n"
+                                + "}\n"
+                                + "],\n"
+                                + "\"totalAmount\": 99.97\n"
                                 + "}")));
         
         // Configure Payment Service Mock responses - successful payment
-        paymentServiceMock.stubFor(post(urlPathEqualTo("/api/payments"))
+        paymentServiceMock.stubFor(post(urlPathEqualTo("/process"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("{"
-                                + "\"paymentId\": \"payment-123\","
-                                + "\"status\": \"SUCCESS\","
-                                + "\"amount\": 99.97"
+                        .withBody("{\n"
+                                + "\"paymentId\": \"payment-123\",\n"
+                                + "\"status\": \"SUCCESS\",\n"
+                                + "\"amount\": 99.97\n"
                                 + "}")));
         
         // Configure Inventory Service Mock responses - successful reservation
-        inventoryServiceMock.stubFor(post(urlPathEqualTo("/inventory/reserve"))
+        inventoryServiceMock.stubFor(post(urlPathEqualTo("/api/inventory/reserve"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
-                        .withBody("{"
-                                + "\"success\": true,"
-                                + "\"reservationId\": \"res-123\""
+                        .withBody("{\n"
+                                + "\"success\": true,\n"
+                                + "\"reservationId\": \"res-123\"\n"
+                                + "}")));
+        
+        // Configure Inventory Service Mock responses - successful release
+        inventoryServiceMock.stubFor(post(urlPathEqualTo("/api/inventory/release"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\n"
+                                + "\"success\": true\n"
                                 + "}")));
     }
 
@@ -252,8 +260,8 @@ public class OrderShredApplicationIntegrationTest {
         
         // Verify external service calls were made
         cartServiceMock.verify(getRequestedFor(urlPathMatching("/api/cart/user/123")));
-        inventoryServiceMock.verify(postRequestedFor(urlPathEqualTo("/inventory/reserve")));
-        paymentServiceMock.verify(postRequestedFor(urlPathEqualTo("/api/payments")));
+        inventoryServiceMock.verify(postRequestedFor(urlPathEqualTo("/api/inventory/reserve")));
+        paymentServiceMock.verify(postRequestedFor(urlPathEqualTo("/process")));
         
         // Verify application logs show successful processing
         String logs = output.getOut();
@@ -266,6 +274,129 @@ public class OrderShredApplicationIntegrationTest {
         logger.info("✅ Order ID: {}, Total Amount: {}, Payment Status: {}, Reservation State: {}", 
                 orderResponse.getId(), orderResponse.getTotalAmount(), 
                 orderResponse.getPaymentStatus(), orderResponse.getReservationState());
+    }
+
+    @Test
+    void When_Payment_Fails_Then_Order_Creation_Fails_And_Inventory_Released(CapturedOutput output) {
+        logger.info("=== Testing payment failure with inventory rollback ===");
+        
+        // Reset WireMock to clear previous stubs
+        paymentServiceMock.resetAll();
+        inventoryServiceMock.resetAll();
+        cartServiceMock.resetAll();
+        
+        // Given: Cart service returns items as usual
+        cartServiceMock.stubFor(get(urlPathMatching("/api/cart/user/.*"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\n"
+                                + "\"userId\": 456,\n"
+                                + "\"items\": [\n"
+                                + "{\n"
+                                + "\"productId\": 2001,\n"
+                                + "\"quantity\": 1,\n"
+                                + "\"price\": 50.00\n"
+                                + "},\n"
+                                + "{\n"
+                                + "\"productId\": 2002,\n"
+                                + "\"quantity\": 3,\n"
+                                + "\"price\": 25.00\n"
+                                + "}\n"
+                                + "],\n"
+                                + "\"totalAmount\": 125.00\n"
+                                + "}")));
+        
+        // Given: Inventory service successfully reserves items initially
+        inventoryServiceMock.stubFor(post(urlPathEqualTo("/api/inventory/reserve"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\n"
+                                + "\"success\": true,\n"
+                                + "\"reservationId\": \"res-456\"\n"
+                                + "}")));
+        
+        // Given: Inventory service successfully releases items when called
+        inventoryServiceMock.stubFor(post(urlPathEqualTo("/api/inventory/release"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\n"
+                                + "\"success\": true\n"
+                                + "}")));
+        
+        // Given: Payment service fails with DECLINED status
+        paymentServiceMock.stubFor(post(urlPathEqualTo("/process"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\n"
+                                + "\"paymentId\": \"payment-failed-456\",\n"
+                                + "\"status\": \"DECLINED\",\n"
+                                + "\"message\": \"Card declined by issuer\"\n"
+                                + "}")));
+        
+        // Given: A valid order creation request
+        SharedCreateOrderRequest request = new SharedCreateOrderRequest(456L, "CREDIT_CARD");
+        String baseUrl = "http://localhost:" + port;
+        
+        logger.info("Sending order creation request with payment failure scenario: {}", request);
+        
+        // When: Creating an order via the API (should fail due to payment)
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                baseUrl + "/api/orders", request, String.class);
+        
+        logger.info("Received response status: {}", response.getStatusCode());
+        logger.info("Received response body: {}", response.getBody());
+        
+        // Then: The order creation should fail
+        assertTrue(response.getStatusCode().is4xxClientError() || response.getStatusCode().is5xxServerError(),
+                "Order creation should fail with error status");
+        
+        // Verify that no order was persisted to the database
+        List<DomainEntityOrder> allOrders = orderRepository.findAll();
+        boolean hasOrderForUser456 = allOrders.stream()
+                .anyMatch(order -> order.getUserId().equals(456L));
+        assertFalse(hasOrderForUser456, "No order should be persisted when payment fails");
+        
+        // Verify that no order items were persisted
+        List<ai.shreds.domain.entities.DomainEntityOrderItem> allOrderItems = orderItemRepository.findAll();
+        boolean hasItemsForFailedOrder = allOrderItems.stream()
+                .anyMatch(item -> {
+                    Optional<DomainEntityOrder> order = orderRepository.findById(item.getOrderId());
+                    return order.isPresent() && order.get().getUserId().equals(456L);
+                });
+        assertFalse(hasItemsForFailedOrder, "No order items should be persisted when payment fails");
+        
+        // Verify external service calls were made in correct sequence
+        cartServiceMock.verify(getRequestedFor(urlPathMatching("/api/cart/user/456")));
+        inventoryServiceMock.verify(postRequestedFor(urlPathEqualTo("/api/inventory/reserve")));
+        paymentServiceMock.verify(postRequestedFor(urlPathEqualTo("/process")));
+        
+        // Critical: Verify inventory was released after payment failure
+        inventoryServiceMock.verify(postRequestedFor(urlPathEqualTo("/api/inventory/release")));
+        
+        // Verify application logs show payment failure and inventory rollback
+        String logs = output.getOut();
+        assertTrue(logs.contains("Received order creation request for user: 456") ||
+                  logs.contains("Processing order creation"), 
+                "Logs should show order creation request received");
+        assertTrue(logs.contains("Payment") && (logs.contains("failed") || logs.contains("declined")), 
+                "Logs should show payment failure");
+        assertTrue(logs.contains("release") || logs.contains("rollback"), 
+                "Logs should show inventory release/rollback");
+        
+        // Verify error response contains meaningful information
+        assertNotNull(response.getBody(), "Error response body should not be null");
+        String responseBody = response.getBody().toLowerCase();
+        assertTrue(responseBody.contains("payment") || responseBody.contains("declined") || responseBody.contains("failed"),
+                "Error response should mention payment failure");
+        
+        logger.info("✅ Payment failure scenario completed successfully");
+        logger.info("✅ Verified: Order not persisted, inventory released, proper error response");
+        logger.info("✅ Response status: {}, Error message contains payment info: {}", 
+                response.getStatusCode(), responseBody.contains("payment"));
     }
 
     @Test
