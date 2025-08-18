@@ -5,7 +5,7 @@ spring:
   application:
     name: order-shred-test
   datasource:
-    # TestContainers will override these values
+    # TestContainers will override these values dynamically
     url: jdbc:mysql://localhost:3306/test_orders
     username: test
     password: test
@@ -24,15 +24,14 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
   activemq:
-    # TestContainers will override these values
-    broker-url: tcp://localhost:61616
+    # Will be mocked in tests
+    broker-url: vm://localhost?broker.persistent=false
     user: admin
     password: admin
     packages:
       trust-all: true
     pool:
-      enabled: true
-      max-connections: 5
+      enabled: false
 
 grpc:
   server:
@@ -41,16 +40,16 @@ grpc:
 
 payment:
   service:
-    # WireMock will provide this URL
-    url: http://localhost:8089
-    connect-timeout: 5000
-    read-timeout: 5000
+    # Will be mocked in tests
+    url: http://localhost:8081
+    connect-timeout: 1000
+    read-timeout: 1000
 
 inventory:
   service:
-    # WireMock will provide this host/port
+    # Will be mocked in tests
     host: localhost
-    port: 9091
+    port: 9090
 
 resilience4j:
   circuitbreaker:
@@ -85,7 +84,7 @@ logging:
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
     io.github.resilience4j: DEBUG
     org.testcontainers: INFO
-    com.github.tomakehurst.wiremock: INFO
+    com.github.dockerjava: WARN
 
 management:
   endpoints:
