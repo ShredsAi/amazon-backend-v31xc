@@ -1,0 +1,95 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: order-shred
+  datasource:
+    url: jdbc:mysql://localhost:3306/orders
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+  activemq:
+    broker-url: tcp://localhost:61616
+    user: admin
+    password: admin
+    packages:
+      trust-all: true
+    pool:
+      enabled: true
+      max-connections: 10
+
+grpc:
+  server:
+    port: 6565
+    address: 0.0.0.0
+
+payment:
+  service:
+    url: http://localhost:8081
+    connect-timeout: 5000
+    read-timeout: 5000
+
+inventory:
+  service:
+    host: localhost
+    port: 9090
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        registerHealthIndicator: true
+        allowHealthIndicatorToFail: true
+  retry:
+    instances:
+      paymentService:
+        maxAttempts: 3
+        waitDuration: 1000
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+
+spring:
+  retry:
+    maxAttempts: 3
+    initialInterval: 1000
+    multiplier: 2
+    maxInterval: 5000
+
+logging:
+  level:
+    root: INFO
+    ai.shreds: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    io.github.resilience4j: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,retries
+  endpoint:
+    health:
+      show-details: always
+    circuitbreakers:
+      enabled: true
+    retries:
+      enabled: true

@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "ai.shreds.proto.inventory";
+option java_outer_classname = "InventoryServiceProto";
+
+service InventoryService {
+    // Reserve items in inventory
+    rpc reserveItems (ReserveRequest) returns (ReserveResponse);
+    // Release previously reserved items
+    rpc releaseItems (ReleaseRequest) returns (ReleaseResponse);
+    // Check item availability without reserving
+    rpc checkAvailability (AvailabilityRequest) returns (AvailabilityResponse);
+}
+
+message ReserveRequest {
+    string orderId = 1;
+    repeated ReserveItem items = 2;
+}
+
+message ReserveItem {
+    int64 productId = 1;
+    int32 quantity = 2;
+    string warehouseId = 3; // Optional warehouse specification
+}
+
+message ReserveResponse {
+    bool success = 1;
+    string message = 2;
+    repeated ReservationError errors = 3;
+    string reservationId = 4;
+}
+
+message ReleaseRequest {
+    string orderId = 1;
+    string reservationId = 2;
+    repeated ReserveItem items = 3;
+}
+
+message ReleaseResponse {
+    bool success = 1;
+    string message = 2;
+    repeated string failedProductIds = 3;
+}
+
+message AvailabilityRequest {
+    repeated ReserveItem items = 1;
+}
+
+message AvailabilityResponse {
+    bool allAvailable = 1;
+    repeated ProductAvailability availability = 2;
+}
+
+message ProductAvailability {
+    int64 productId = 1;
+    bool available = 2;
+    int32 availableQuantity = 3;
+    string warehouseId = 4;
+}
+
+message ReservationError {
+    int64 productId = 1;
+    string errorCode = 2;
+    string errorMessage = 3;
+    int32 availableQuantity = 4;
+}

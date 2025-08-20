@@ -1,0 +1,96 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: order-shred-test
+  datasource:
+    # TestContainers will override these values dynamically
+    url: jdbc:mysql://localhost:3306/test_orders
+    username: test
+    password: test
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      idle-timeout: 300000
+      connection-timeout: 20000
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+  activemq:
+    # Will be mocked in tests
+    broker-url: vm://localhost?broker.persistent=false
+    user: admin
+    password: admin
+    packages:
+      trust-all: true
+    pool:
+      enabled: false
+
+grpc:
+  server:
+    port: 0
+    address: 0.0.0.0
+
+payment:
+  service:
+    # Will be mocked in tests
+    url: http://localhost:8081
+    connect-timeout: 1000
+    read-timeout: 1000
+
+inventory:
+  service:
+    # Will be mocked in tests
+    host: localhost
+    port: 9090
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentService:
+        slidingWindowSize: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 5000
+        permittedNumberOfCallsInHalfOpenState: 2
+        registerHealthIndicator: true
+        allowHealthIndicatorToFail: true
+  retry:
+    instances:
+      paymentService:
+        maxAttempts: 2
+        waitDuration: 500
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+
+spring:
+  retry:
+    maxAttempts: 2
+    initialInterval: 500
+    multiplier: 2
+    maxInterval: 2000
+
+logging:
+  level:
+    root: INFO
+    ai.shreds: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    io.github.resilience4j: DEBUG
+    org.testcontainers: INFO
+    com.github.dockerjava: WARN
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

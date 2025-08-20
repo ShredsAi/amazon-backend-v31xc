@@ -1,0 +1,82 @@
+# Compiled class files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+
+# IDE - IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+out/
+
+# IDE - Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# IDE - VS Code
+.vscode/
+.factorypath
+
+# OS Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.properties
+!src/main/resources/application.yml
+!src/test/resources/application-test.yml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Generated gRPC files
+src/main/generated-sources/protobuf/java/*
+!src/main/generated-sources/protobuf/java/.gitkeep
+src/main/generated-sources/protobuf/grpc-java/*
+!src/main/generated-sources/protobuf/grpc-java/.gitkeep
+
+# Test reports
+test-output/
+reports/
+
+# Others
+*.bak
+*.swp
+*.tmp
+*.temp
+.attach_pid*
+.springBeans
